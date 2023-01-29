@@ -18,9 +18,27 @@ def find_user(request_arguments, users):
 
     return response
 
+def find_user_sql(request_arguments, users):
+    response = make_response()
+    response.headers["Content-Type"] = "application/json"
+    response.status = 200
+    if "login" in request_arguments:
+        response.data = json.dumps(
+            [found_user.to_json() for found_user in users if
+             found_user.login == request_arguments["login"]])
+    else:
+        response.data = json.dumps({errors.error: errors.unrecognized_param})
+        response.status = 400
 
-def validate_request(data, users):
-    if len([existing for existing in users if existing.login == data["login"]]) > 0:
+    return response
+
+
+def validate_request(data, users, db):
+    params = [dict(name="@login", value=data["login"])]
+    query = "SELECT t.firstname, t.lastname, t.login FROM texasContainer t WHERE t.login = @login"
+    result = db.query_items(query=query, parameters=params, enable_cross_partition_query=True)
+
+    for result in result:
         return json.dumps({errors.error: errors.user_exists_error})
 
     if "login" not in data:

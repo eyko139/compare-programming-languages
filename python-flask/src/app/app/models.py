@@ -1,6 +1,4 @@
 import json
-from ctypes import Union
-from typing import List
 
 import jsons
 
@@ -10,17 +8,17 @@ class User:
         self.firstname = firstname
         self.lastname = lastname
         self.login = login
-        self.__password = password
-        self.__userId = userId
+        self.password = password
+        self.id = userId
 
     def __repr__(self):
         return repr("login: {0}, firstname: {1}, lastname: {2}".format(self.login, self.firstname, self.lastname))
 
     def to_json(self):
-        return jsons.dump(self, strip_privates=True)
+        return jsons.dump(self, strip_privates=False)
 
     def check_password_and_login(self, password_to_check, username_to_check) -> bool:
-        return self.__password == password_to_check and self.login == username_to_check
+        return self.password == password_to_check and self.login == username_to_check
 
     def greet(self):
         return json.dumps({"msg": "Hello {} {}!".format(self.firstname, self.lastname),

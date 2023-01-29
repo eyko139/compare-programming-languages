@@ -7,3 +7,4 @@ octant 0.25.1
 dive 0.10.0
 k6 0.41.0
 nodejs 19.2.0
+direnv 2.32.1
