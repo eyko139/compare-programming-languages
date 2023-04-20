@@ -14,21 +14,36 @@ glob('./dist/reports/**/*.json', (err, files) => {
 
     // Iterate over all files
     let resultJSON = {};
+    let services = [];
     files.forEach(file => {
         console.log(file)
-        const parentPath = path.dirname(file);
-        const dirName = path.basename(parentPath);
-        console.log("dirName", dirName);
-        if(!resultJSON[dirName]){
-            resultJSON[dirName]={};
+        const servicePath = path.dirname(file).split(path.sep);
+        console.log(servicePath)
+        if (!servicePath || !servicePath.length) {
+            throw new Error("could not resolve path to report file, must be /<service_name>/<version>/<file>.json", file)
+        }
+        const serviceName = servicePath[servicePath.length - 2]
+        const serviceVersion = servicePath[servicePath.length - 1]
+        console.log("serviceName", serviceName);
+        console.log("serviceVersion", serviceVersion);
+        if(!resultJSON[serviceName]){
+            resultJSON[serviceName]=[];
         }
         let basename = path.basename(file, '.json');
-        console.log("basename", basename)
         const relativePath = path.relative("./dist", file);
-        console.log("relativePath=", relativePath);
-        resultJSON[dirName][basename] = relativePath;
+        resultJSON = {
+            ...resultJSON,
+            [serviceName]: {
+                ...resultJSON[serviceName],
+                [serviceVersion]: {
+                    ...resultJSON[serviceName][serviceVersion],
+                    [basename]: relativePath
+                }
+            }
+        }
     })
 
+    console.log(resultJSON)
 
     const data = JSON.stringify(resultJSON)
 
