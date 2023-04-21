@@ -4,7 +4,12 @@
   "license": "MIT",
   "scripts": {
     "dev": "node src/lookupReportFiles.js && parcel src/index.html",
-    "build": "parcel build src/index.html"
+    "build": "node src/lookupReportFiles.js && parcel build src/index.html"
+  },
+  "targets": {
+    "default": {
+      "distDir": "../"
+    }
   },
   "devDependencies": {
     "glob": "^8.0.3",
@@ -13,6 +18,7 @@
   },
   "dependencies": {
     "@cubejs-client/core": "^0.31.0",
-    "chart.js": "^4.0.0"
+    "chart.js": "^4.0.0",
+    "semver": "^7.5.0"
   }
 }

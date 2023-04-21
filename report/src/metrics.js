@@ -1,17 +1,28 @@
 import Chart from 'chart.js/auto';
+const semver = require('semver')
 
-import reportFiles from './loadtest-results.json';
+import reportFilesJSON from './loadtest-results.json';
 
-const loadTestData = {};
-const requestCountData = {};
-const requestCountTableData = [];
-const buildDurationData = {};
-const startupDurationData = {};
-const imageSizeData = {};
-const cpuDataSet = {};
-const memDataSet = {};
-const buttonArrray = [];
-const errors = {};
+const reportFiles = {...reportFilesJSON};
+
+let loadTestData = {};
+let requestCountData = {};
+let requestCountTableData = [];
+let buildDurationData = {};
+let startupDurationData = {};
+let imageSizeData = {};
+let cpuDataSet = {};
+let memDataSet = {};
+let containerImageSizeChart;
+let requestCountChart;
+let buildDurationChart;
+let startupDurationChart;
+let requestDurationChart;
+let cpuChart;
+let memChart;
+let requestCountTable;
+let imageSizeChart;
+let imageSizeTable;
 
 
 function formatBytes(bytes, decimals = 2) {
@@ -27,8 +38,6 @@ function formatBytes(bytes, decimals = 2) {
 function prepareContainerImageSizesData(prefix, containerImageData){
     const imageSize = containerImageData["image-size"];
 
-    imageSizeData
-
     if(!imageSizeData.labels){
         imageSizeData.labels=[];
     }
@@ -36,7 +45,21 @@ function prepareContainerImageSizesData(prefix, containerImageData){
     if(!imageSizeData.datasets){
         imageSizeData.datasets=[];
     }
+    if (!imageSizeData.service) {
+        imageSizeData.service = prefix
+    }
+    if (!imageSizeData.total) {
+        imageSizeData.total =  []
+    }
     imageSizeData.labels.push(prefix);
+    imageSizeData.service = prefix
+    imageSizeData.total.push({
+        "label": prefix,
+        "data": [{
+            "y": formatBytes(imageSize),
+            "x": prefix
+        }]
+    });
     imageSizeData.datasets.push({
         "label": prefix,
         "data": [{
@@ -58,8 +81,12 @@ function prepareStartupDurationData(prefix, data) {
             "data": [],
         }];
     }
+    if (!startupDurationData.total) {
+        startupDurationData.total =  []
+    }
     startupDurationData.labels.push(prefix);
     startupDurationData.datasets[0].data.push(data.startup_time_in_seconds);
+    startupDurationData.total.push(...startupDurationData.datasets)
 
 
 
@@ -78,8 +105,13 @@ function prepareBuildDurationData(prefix, buildDuration) {
             "data": [],
         }];
     }
+    if (!buildDurationData.total) {
+        buildDurationData.total = []
+    }
+
     buildDurationData.labels.push(prefix);
     buildDurationData.datasets[0].data.push(buildDuration.buildDuration);
+    buildDurationData.total.push(...buildDurationData.datasets)
 
 }
 
@@ -111,6 +143,10 @@ function prepareLoadTestData(prefix, loadTestResults){
         }];
     }
 
+    if (!requestCountData.total) {
+        requestCountData.total = []
+    }
+
     requestCountData.datasets[0].data.push(totalRequests);
     requestCountData.datasets[1].data.push(totalErrors);
 
@@ -119,6 +155,8 @@ function prepareLoadTestData(prefix, loadTestResults){
         "totalRequests": totalRequests,
         "failedRequests": totalErrors,
     });
+    requestCountData.total.push(requestCountData.datasets[0])
+    requestCountData.total.push(requestCountData.datasets[1])
 
 
 
@@ -130,10 +168,14 @@ function prepareLoadTestData(prefix, loadTestResults){
     if(!loadTestData.datasets){
         loadTestData.datasets=[];
     }
+    if (!loadTestData.total) {
+        loadTestData.total = []
+    }
     loadTestData.datasets[loadTestData.datasets.length]= {
         label: prefix,
         data: [httpRequestDurationAvg, httpRequestDurationMed, httpRequestDurationMax, httpRequestDurationMin, httpRequestDurationP90, httpRequestDurationP95]
     };
+    loadTestData.total.push(...loadTestData.datasets);
 
 
 
@@ -179,6 +221,9 @@ function prepareMemData(prefix, perfData){
     if(!memDataSet.datasets){
         memDataSet.datasets=[];
     }
+    if (!memDataSet.total) {
+        memDataSet.total = []
+    }
 
     memDataSet.labels.push(prefix);
     memDataSet.datasets.push(
@@ -187,6 +232,8 @@ function prepareMemData(prefix, perfData){
             data: unifiedVal,
         },
     );
+
+    memDataSet.total.push(...memDataSet.datasets)
 
 }
 
@@ -201,6 +248,9 @@ function prepareCpuData(prefix, perfData){
     if(!cpuDataSet.datasets){
         cpuDataSet.datasets=[];
     }
+    if (!cpuDataSet.total) {
+        cpuDataSet.total = []
+    }
 
     cpuDataSet.labels.push(prefix);
     cpuDataSet.datasets.push(
@@ -208,6 +258,7 @@ function prepareCpuData(prefix, perfData){
             label: prefix,
             data: unifiedVal,
         });
+    cpuDataSet.total.push(...cpuDataSet.datasets)
 }
 
 
@@ -247,63 +298,122 @@ async function buildRequestCountTable() {
     });
 }
 
-async function loadServiceData(prefix, serviceReports) {
-    const loadTestResultsPath = serviceReports["loadtest-results"];
-    const containerImageSizePath = serviceReports["container-image-size"];
-    const perfCPUPath = serviceReports["perf-cpu"];
-    const perfMemPath = serviceReports["perf-mem"];
-    const buildDurationPath = serviceReports["build-duration"];
-    const startupDurationPath = serviceReports["startup-time"];
+async function loadServiceData(prefix, version, serviceReports) {
+    console.log("REPORTS", serviceReports)
+    console.log("VERSION", version)
 
-    const responsesJSON = await Promise.all([
-        fetch(loadTestResultsPath),
-        fetch(containerImageSizePath),
-        fetch(perfCPUPath),
-        fetch(perfMemPath),
-        fetch(buildDurationPath),
-        fetch(startupDurationPath),
-    ]);
-    // const loadTestHtmlFetched = await fetch(loadTestHtml)
-    //     .then(res => res.url)
-    const [loadTestResults, containerImageSize, perfCPU, perfMem, buildDuration, startupDuration] = await Promise.all(responsesJSON.map(r => r.json()));
-    console.log("--------------------------------------------------------------------------------")
-    console.log("loadtest", loadTestResults);
-    console.log("containerImages", containerImageSize);
-    console.log('cpu', perfCPU);
-    console.log('mem', perfMem);
-    console.log('buildDuration', buildDuration);
-    console.log('startupDuration', startupDuration);
-    console.log("--------------------------------------------------------------------------------")
+    for (const [testType, testPath] of Object.entries(serviceReports)) {
+        const reportData = await fetch(testPath)
+        .then(response => response.json())
+        .catch((err) => new Error("error parsing data for", testPath, err));
 
-    prepareLoadTestData(prefix, loadTestResults);
+        console.log("reportData", reportData)
+        prepareTestData(`${prefix}-${version}`, testType, reportData);
+    }
+}
 
-    prepareContainerImageSizesData(prefix, containerImageSize);
-    prepareCpuData(prefix,perfCPU);
-    prepareMemData(prefix,perfMem);
-    prepareBuildDurationData(prefix, buildDuration);
-    prepareStartupDurationData(prefix, startupDuration);
-
-
-
-
+const prepareTestData = (prefix, testType, data) => {
+    switch(testType){
+        case 'loadtest-results':
+            prepareLoadTestData(prefix, data);
+            break;
+        case 'container-image-size':
+            prepareContainerImageSizesData(prefix, data);
+            break;
+        case 'perf-cpu':
+            prepareCpuData(prefix, data);
+            break;
+        case 'perf-mem':
+            prepareMemData(prefix, data);
+            break;
+        case 'build-duration':
+            prepareBuildDurationData(prefix, data);
+            break;
+        case 'startup-time':
+            prepareStartupDurationData(prefix, data);
+            break;
+        default: new Error ("unknown test type", testType)
+    }
 }
 
 
-
-async function prepareChartData(){
-    console.log("reportFiles", reportFiles);
-    for (const key in reportFiles) {
-
-        const serviceReports = reportFiles[key];
-        console.log("loading serviceReports for " + key, serviceReports);
-        await loadServiceData(key, serviceReports)
+async function prepareChartData(filterOptions){
+    const filteredData = filterOptions ? filterOptions : reportFiles;
+    console.log("STARTING", filteredData)
+    for (const service in filteredData) {
+        const serviceReportsByVersion = filteredData[service];
+        let latestVersion;
+        let latestReport;
+        for (const [version, report] of Object.entries(serviceReportsByVersion)) {
+            if (!latestVersion || !latestReport) {
+                latestVersion = version;
+                latestReport = report
+            }
+            if (semver.lt(latestVersion, version)) {
+                latestVersion = version;
+                latestReport = report
+            }
+        }
+        buildVersionSelector(service, serviceReportsByVersion, latestVersion);
+        await loadServiceData(service, latestVersion, latestReport)
     }
-
-    console.log("build request count table");
     await buildRequestCountTable();
 }
 
-var requestDurationChart;
+
+const buildVersionSelector = (service, versions, initiallySelected) => {
+    if (document.getElementById(`${service}-selector`)) {
+        return 
+    }
+    const selectorContainer = document.getElementById("versionSelect");
+    const selector = document.createElement("select");
+    selector.id = `${service}-selector`
+    for (const version in versions) {
+        const option = document.createElement("option");
+        option.value = version;
+        option.text = `${version} - last run: ${new Date(versions[version].lastRun).toLocaleString()}`;
+        selector.appendChild(option);
+        if (version === initiallySelected) {
+            option.selected = true;
+        }
+    }
+    selector.addEventListener("change", async function(e) {
+        updateChartData({service: service, version: e.target.value})
+    });
+    selectorContainer.appendChild(document.createTextNode(service));
+    selectorContainer.appendChild(selector);
+}
+
+const updateChartData = async (filterOptions) => {
+   let filteredReports =  {...reportFiles}
+
+   const charts = [containerImageSizeChart, requestCountChart, requestDurationChart, startupDurationChart, cpuChart, memChart];
+    loadTestData = {};
+    requestCountData = {};
+    requestCountTableData = [];
+    buildDurationData = {};
+    startupDurationData = {};
+    imageSizeData = {};
+    cpuDataSet = {};
+    memDataSet = {};
+    filteredReports = {
+        ...filteredReports,
+        [filterOptions.service]: {
+          [filterOptions.version]: filteredReports[filterOptions.service][filterOptions.version]
+        }
+    }
+    await prepareChartData(filteredReports);
+    charts.forEach(chart => {
+        requestDurationChart.data = loadTestData;
+        containerImageSizeChart.data = imageSizeData;
+        requestCountChart.data = loadTestData;
+        startupDurationChart.data = startupDurationData;
+        cpuChart.data = cpuDataSet;
+        memChart.data = memDataSet;
+        chart && chart.update();
+   })
+}
+
 
 (async function() {
 
@@ -312,7 +422,7 @@ var requestDurationChart;
     console.log("start drawing charts");
     // container sizes
     console.log("image sizes", imageSizeData)
-    new Chart(
+    containerImageSizeChart = new Chart(
         document.getElementById('container_image_size'),
         {
             type: 'bar',
@@ -349,7 +459,7 @@ var requestDurationChart;
 
     // startup duration
     console.log("startup-duration-data", startupDurationData)
-    new Chart(
+    startupDurationChart = new Chart(
         document.getElementById('startup_duration_chart'),
         {
             type: 'bar',
@@ -433,7 +543,7 @@ var requestDurationChart;
 
     // request count chart
     console.log("request_count-data", requestCountData)
-    new Chart(
+    requestCountChart = new Chart(
         document.getElementById('request_count_chart'),
         {
             type: 'bar',
@@ -531,7 +641,7 @@ var requestDurationChart;
     // resource data
     // cpu - loadtest results
     console.log("cpu_data", cpuDataSet);
-    new Chart(
+    cpuChart = new Chart(
         document.getElementById('perf_cpu'),
         {
             type: 'line',
@@ -570,7 +680,7 @@ var requestDurationChart;
 
 
     console.log("memDataSet", memDataSet);
-    new Chart(
+    memChart = new Chart(
         document.getElementById('perf_mem'),
         {
             type: 'line',

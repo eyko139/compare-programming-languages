@@ -11,6 +11,15 @@ while :; do
                 MICROSERVICE_NAME=$2
             shift
             ;;
+        --serviceVersion)
+                MICROSERVICE_VERSION=$2
+                if [ -z "$MICROSERVICE_VERSION"]
+                then 
+                    echo "No version specified, tagging as 0.0.0'"
+                    MICROSERVICE_VERSION="latest"
+                    fi
+            shift
+            ;;
         --)              # End of all options.
             shift
             break
@@ -30,7 +39,7 @@ K8S_PLAYGROUND_DIR="${SCRIPT_DIR}/../../../k8s-playground/"
 # load colors
 source "$K8S_PLAYGROUND_DIR/kind/shell-based-setup/k8s/scripts/define-colors.sh"
 
-REPORT_FOLDER="$SCRIPT_DIR/../report/dist/reports/${MICROSERVICE_NAME}"
+REPORT_FOLDER="$SCRIPT_DIR/../report/dist/reports/${MICROSERVICE_NAME}/${MICROSERVICE_VERSION}"
 mkdir -p "$REPORT_FOLDER"
 
 ## JAVA PURE SERVICE
@@ -40,6 +49,7 @@ REPORT_FILE_JSON="${REPORT_FOLDER}/loadtest-results.json"
 DOCKER_IMAGE_SIZE_JSON="${REPORT_FOLDER}/container-image-size.json"
 CPU_PERF_DATA_JSON="${REPORT_FOLDER}/perf-cpu.json"
 MEM_PERF_DATA_JSON="${REPORT_FOLDER}/perf-mem.json"
+
 
 # start collecting metrics
 ${SCRIPT_DIR}/collect-usage-data.sh \
