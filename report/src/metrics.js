@@ -23,6 +23,7 @@ let memChart;
 let requestCountTable;
 let imageSizeChart;
 let imageSizeTable;
+let versionSelectors = [];
 
 
 function formatBytes(bytes, decimals = 2) {
@@ -382,10 +383,12 @@ const buildVersionSelector = (service, versions, initiallySelected) => {
     });
     selectorContainer.appendChild(document.createTextNode(service));
     selectorContainer.appendChild(selector);
+    versionSelectors.push(selector);
 }
 
 const updateChartData = async (filterOptions) => {
    let filteredReports =  {...reportFiles}
+   console.log("SELECTORS", versionSelectors)
 
    const charts = [containerImageSizeChart, requestCountChart, requestDurationChart, startupDurationChart, cpuChart, memChart];
     loadTestData = {};

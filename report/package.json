@@ -4,7 +4,7 @@
   "license": "MIT",
   "scripts": {
     "dev": "node src/lookupReportFiles.js && parcel src/index.html",
-    "build": "node src/lookupReportFiles.js && parcel build src/index.html"
+    "build": "node src/lookupReportFiles.js && parcel build src/index.html --public-url '.'"
   },
   "devDependencies": {
     "glob": "^8.0.3",
