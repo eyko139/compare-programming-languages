@@ -31,27 +31,33 @@ jobs:
         run: npm install ./report
       - name: Parcel build 🍄
         run: npm --prefix ./report run build
+      - name: Whats going on
+        run: ls
+      - run: mkdir -p docs
+      - run: cp -r ./report/dist/* docs/
+      - uses: actions/upload-artifact@master
+        with:
+          name: parcel-build
+          path: docs
   copy-to-branch:
     runs-on: ubuntu-latest
     needs: build
     steps:
-      - uses: actions/checkout@v2
-      - name: Copy To Branches Action
-        uses: planetoftheweb/copy-to-branches@v1.2
-        env:
-          key: main
-          branches: github-page
-          files: ./reports/dist/*
-
-
-  # Deployment job
-  # deploy:
-  #   environment:
-  #     name: github-pages
-  #     url: ${{ steps.deployment.outputs.page_url }}
-  #   runs-on: ubuntu-latest
-  #   needs: build
-  #   steps:
-  #     - name: Deploy to GitHub Pages 🚀
-  #       id: deployment
-  #       uses: actions/deploy-pages@v1
+      - uses: actions/checkout@v3
+        with:
+          ref: 'github-page'
+      - name: setup git config
+        run: |
+          git config user.name "GitHub Actions Bot"
+          git config user.email "<>"
+      - uses: actions/download-artifact@master
+        with:
+          name: parcel-build
+          path: docs
+      - name: commit
+        run: |
+          ls docs
+          git add docs
+          git status
+          git commit -m "stuff"
+          git push

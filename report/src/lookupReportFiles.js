@@ -53,13 +53,4 @@ glob('./dist/reports/**/*.json', (err, files) => {
             console.log(`File is written successfully!`)
         }
     })
-
-    fs.writeFile('../loadtest-results.json', data, 'utf8', err => {
-        if (err) {
-            console.log(`Error writing file: ${err}`)
-        } else {
-            console.log(`File is written successfully!`)
-        }
-    })
-
 })

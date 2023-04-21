@@ -6,11 +6,6 @@
     "dev": "node src/lookupReportFiles.js && parcel src/index.html",
     "build": "node src/lookupReportFiles.js && parcel build src/index.html"
   },
-  "targets": {
-    "default": {
-      "distDir": "../"
-    }
-  },
   "devDependencies": {
     "glob": "^8.0.3",
     "parcel": "^2.6.2",
