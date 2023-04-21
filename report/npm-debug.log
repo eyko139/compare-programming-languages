@@ -1,0 +1,26 @@
+0 info it worked if it ends with ok
+1 verbose cli [
+1 verbose cli   '/home/luk/node_modules/node/bin/node',
+1 verbose cli   '/home/luk/node_modules/.bin/npm',
+1 verbose cli   'install',
+1 verbose cli   '--json',
+1 verbose cli   '--save-dev',
+1 verbose cli   'util@^0.12.3'
+1 verbose cli ]
+2 info using npm@3.10.10
+3 info using node@v17.4.0
+4 silly loadCurrentTree Starting
+5 silly install loadCurrentTree
+6 silly install readLocalPackageData
+7 verbose stack TypeError: cb.apply is not a function
+7 verbose stack     at /home/luk/node_modules/npm/node_modules/graceful-fs/polyfills.js:267:18
+7 verbose stack     at FSReqCallback.oncomplete (node:fs:199:5)
+8 verbose cwd /home/luk/projects/compare-programming-languages/report
+9 error Linux 6.2.6-76060206-generic
+10 error argv "/home/luk/node_modules/node/bin/node" "/home/luk/node_modules/.bin/npm" "install" "--json" "--save-dev" "util@^0.12.3"
+11 error node v17.4.0
+12 error npm  v3.10.10
+13 error cb.apply is not a function
+14 error If you need help, you may report this error at:
+14 error     <https://github.com/npm/npm/issues>
+15 verbose exit [ 1, true ]

@@ -37,14 +37,12 @@ glob('./dist/reports/**/*.json', (err, files) => {
                 ...resultJSON[serviceName],
                 [serviceVersion]: {
                     ...resultJSON[serviceName][serviceVersion],
-                    [basename]: relativePath
+                    [basename]: relativePath,
+                    lastRun: fs.statSync(file).mtime
                 }
             }
         }
     })
-
-    console.log(resultJSON)
-
     const data = JSON.stringify(resultJSON)
 
 // write file to disk

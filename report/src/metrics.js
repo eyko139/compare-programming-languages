@@ -1,20 +1,23 @@
 import Chart from 'chart.js/auto';
+const semver = require('semver')
 
-import reportFiles from './loadtest-results.json';
+import reportFilesJSON from './loadtest-results.json';
 
-const loadTestData = {};
-const requestCountData = {};
-const requestCountTableData = [];
-const buildDurationData = {};
-const startupDurationData = {};
+const reportFiles = {...reportFilesJSON};
+
+let loadTestData = {};
+let requestCountData = {};
+let requestCountTableData = [];
+let buildDurationData = {};
+let startupDurationData = {};
 let imageSizeData = {};
-const cpuDataSet = {};
-const memDataSet = {};
-const services = [];
+let cpuDataSet = {};
+let memDataSet = {};
 let containerImageSizeChart;
 let requestCountChart;
 let buildDurationChart;
 let startupDurationChart;
+let requestDurationChart;
 let cpuChart;
 let memChart;
 let requestCountTable;
@@ -338,20 +341,27 @@ async function prepareChartData(filterOptions){
     const filteredData = filterOptions ? filterOptions : reportFiles;
     console.log("STARTING", filteredData)
     for (const service in filteredData) {
-        services.push(service)
         const serviceReportsByVersion = filteredData[service];
-        buildVersionSelector(service, serviceReportsByVersion);
+        let latestVersion;
+        let latestReport;
         for (const [version, report] of Object.entries(serviceReportsByVersion)) {
-            await loadServiceData(service, version, report)
+            if (!latestVersion || !latestReport) {
+                latestVersion = version;
+                latestReport = report
+            }
+            if (semver.lt(latestVersion, version)) {
+                latestVersion = version;
+                latestReport = report
+            }
         }
+        buildVersionSelector(service, serviceReportsByVersion, latestVersion);
+        await loadServiceData(service, latestVersion, latestReport)
     }
-
-    console.log("build request count table");
     await buildRequestCountTable();
 }
 
 
-const buildVersionSelector = (service, versions) => {
+const buildVersionSelector = (service, versions, initiallySelected) => {
     if (document.getElementById(`${service}-selector`)) {
         return 
     }
@@ -361,8 +371,11 @@ const buildVersionSelector = (service, versions) => {
     for (const version in versions) {
         const option = document.createElement("option");
         option.value = version;
-        option.text = version;
+        option.text = `${version} - last run: ${new Date(versions[version].lastRun).toLocaleString()}`;
         selector.appendChild(option);
+        if (version === initiallySelected) {
+            option.selected = true;
+        }
     }
     selector.addEventListener("change", async function(e) {
         updateChartData({service: service, version: e.target.value})
@@ -372,37 +385,33 @@ const buildVersionSelector = (service, versions) => {
 }
 
 const updateChartData = async (filterOptions) => {
+   let filteredReports =  {...reportFiles}
 
-   const charts = [containerImageSizeChart, requestCountChart, buildDurationChart, startupDurationChart, cpuChart, memChart];
-   charts.forEach(chart => {
-    const update = chart.data.total.filter(dataset => {
-        if (dataset.label.startsWith(filterOptions.service)) {
-            if (dataset.label.endsWith(filterOptions.version)) {
-                return true
-            }
-            return false
+   const charts = [containerImageSizeChart, requestCountChart, requestDurationChart, startupDurationChart, cpuChart, memChart];
+    loadTestData = {};
+    requestCountData = {};
+    requestCountTableData = [];
+    buildDurationData = {};
+    startupDurationData = {};
+    imageSizeData = {};
+    cpuDataSet = {};
+    memDataSet = {};
+    filteredReports = {
+        ...filteredReports,
+        [filterOptions.service]: {
+          [filterOptions.version]: filteredReports[filterOptions.service][filterOptions.version]
         }
-        return true
-    })
-    console.log("UPDATE", update)
-    console.log("CHART", chart)
-         chart.data.datasets.length = 0;
-         chart.data.datasets.push(...update)
-
-         chart.data.labels.length = 0;
-         chart.data.labels.push(...update.map(update => update.label))
-         chart.update();
+    }
+    await prepareChartData(filteredReports);
+    charts.forEach(chart => {
+        requestDurationChart.data = loadTestData;
+        containerImageSizeChart.data = imageSizeData;
+        requestCountChart.data = loadTestData;
+        startupDurationChart.data = startupDurationData;
+        cpuChart.data = cpuDataSet;
+        memChart.data = memDataSet;
+        chart && chart.update();
    })
-   /*
-    containerImageSizeChart.data.datasets.length = 0;
-    containerImageSizeChart.data.datasets.push(...update)
-
-    containerImageSizeChart.data.labels.length = 0;
-    containerImageSizeChart.data.labels.push(...update.map(update => update.label))
-    console.log(containerImageSizeChart.data.datasets)
-    console.log(containerImageSizeChart.data)
-    containerImageSizeChart.update();
-*/
 }
 
 
@@ -450,7 +459,7 @@ const updateChartData = async (filterOptions) => {
 
     // startup duration
     console.log("startup-duration-data", startupDurationData)
-    new Chart(
+    startupDurationChart = new Chart(
         document.getElementById('startup_duration_chart'),
         {
             type: 'bar',
@@ -632,7 +641,7 @@ const updateChartData = async (filterOptions) => {
     // resource data
     // cpu - loadtest results
     console.log("cpu_data", cpuDataSet);
-    new Chart(
+    cpuChart = new Chart(
         document.getElementById('perf_cpu'),
         {
             type: 'line',
@@ -671,7 +680,7 @@ const updateChartData = async (filterOptions) => {
 
 
     console.log("memDataSet", memDataSet);
-    new Chart(
+    memChart = new Chart(
         document.getElementById('perf_mem'),
         {
             type: 'line',
